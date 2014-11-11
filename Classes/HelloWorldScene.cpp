@@ -1,4 +1,10 @@
 #include "HelloWorldScene.h"
+#include "network/HttpRequest.h"
+#include "network/HttpClient.h"
+#include "network/HttpResponse.h"
+#include "cocos2d.h"
+
+using namespace cocos2d::network;
 
 USING_NS_CC;
 
@@ -53,6 +59,8 @@ bool HelloWorld::init()
     // add the sprite as a child to this layer
     this->addChild(sprite, 0);
     
+    this->getExternalImage("http://pic.prepics-cdn.com/masatosakai/24650907.jpeg");
+    
     return true;
 }
 
@@ -88,4 +96,35 @@ void HelloWorld::menuCloseCallback(Ref* pSender)
 #if (CC_TARGET_PLATFORM == CC_PLATFORM_IOS)
     exit(0);
 #endif
+}
+
+void HelloWorld::onHttpRequestCompleted(HttpClient* sender, HttpResponse* response)
+{
+    if ( ! response->isSucceed() ) {
+        return;
+    }
+    std::vector<char> *buffer = response->getResponseData();
+    Image* image = new Image();
+    image->initWithImageData(reinterpret_cast<unsigned char*>(&(buffer->front())), buffer->size());
+    Texture2D* texture = new Texture2D();
+    texture->initWithImage(image);
+    Sprite* sprite = Sprite::createWithTexture(texture);
+    Size visibleSize = Director::getInstance()->getVisibleSize();
+    Vec2 origin = Director::getInstance()->getVisibleOrigin();
+    Size size = sprite->getContentSize();
+    sprite->setPosition(Vec2((visibleSize.width + origin.x)/2,
+                             (visibleSize.height + origin.y)/2));
+    this->addChild(sprite, 100);
+    image->release();
+    texture->release();
+}
+
+void HelloWorld::getExternalImage(char const *url)
+{
+    HttpRequest* request = new HttpRequest();
+    request->setUrl(url);
+    request->setRequestType(HttpRequest::Type::GET);
+    request->setResponseCallback( CC_CALLBACK_2(HelloWorld::onHttpRequestCompleted, this) );
+    HttpClient::getInstance()->send(request);
+    request->release();
 }
